@@ -5,7 +5,7 @@
 An end-to-end pharmacy order management, prescription OCR, voice-to-order AI, and inventory control system built on **n8n**, powered by **Google Gemini 2.5 Flash**, **WhatsApp Business Cloud API**, **Telegram Bot API**, and **Google Sheets**.
 ## 🚀 Live Demo
 
-https://gabrygx.github.io/dawaa-ai-pharmacy-automation/ 
+🔗 **Live Interactive Portfolio:** [https://gabrygx.github.io/dawaa-ai-pharmacy-automation/](https://gabrygx.github.io/dawaa-ai-pharmacy-automation/)
 ## 🌟 Key Features
 
 1. **Multi-Modal Customer Intake (WhatsApp):**
