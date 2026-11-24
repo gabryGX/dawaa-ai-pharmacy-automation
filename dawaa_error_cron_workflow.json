@@ -1,0 +1,1011 @@
+{
+  "name": "Erorr Dawaa",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -912,
+        -704
+      ],
+      "id": "a8fcec4a-8a64-48c9-8580-165ccb4445eb",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Classify Error =====\nconst e = $json.execution || {};\nconst wf = $json.workflow || {};\nconst msg = (e.error && e.error.message) || '';\n\nconst rules = [\n  [/ETIMEDOUT|ECONNRESET|ENOTFOUND|timeout|socket hang up|aborted/i, 'network', 'warning'],\n  [/VALIDATION:/, 'validation', 'info'],\n  [/AI_OUTPUT:|JSON|Unexpected token/i, 'ai_output', 'warning'],\n  [/PUT_[A-Z_]+|chat not found|not configured/i, 'config', 'critical']\n];\nconst [, type, severity] = rules.find(([re]) => re.test(msg)) || [null, 'unknown', 'warning'];\n\nreturn [{ json: {\n  time: $now.setZone('Africa/Cairo').toFormat('yyyy-MM-dd HH:mm'),\n  workflow: wf.name || '',\n  node: e.lastNodeExecuted || '',\n  type, severity, message: msg,\n  execution_url: e.url || '',\n  text: (severity === 'critical' ? '🚨' : '⚠️') + ' ' + (wf.name || 'Workflow') + ' · ' + type + '\\nNode: ' + (e.lastNodeExecuted || '?') + '\\n' + msg + '\\n' + (e.url || '')\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -688,
+        -704
+      ],
+      "id": "7e05112f-de40-49e7-8b4c-8a2ec1b94e2f",
+      "name": "Classify Error"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Errors",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "time": "={{ $json.time }}",
+            "workflow": "={{ $json.workflow }}",
+            "node": "={{ $json.node }}",
+            "type": "={{ $json.type }}",
+            "execution_url": "={{ $json.execution_url }}",
+            "message": "={{ $json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "time",
+              "displayName": "time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow",
+              "displayName": "workflow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "node",
+              "displayName": "node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_url",
+              "displayName": "execution_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -464,
+        -704
+      ],
+      "id": "08b48eab-9a75-4d97-96d3-ae6fd476b93e",
+      "name": "Log Error",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{ $('Classify Error').first().json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -240,
+        -704
+      ],
+      "id": "db62faf5-fd5f-4bd2-aa0f-61bd2193c3f8",
+      "name": "Alret Team",
+      "webhookId": "46bb58ae-7388-403f-a71a-ba93f10168d4",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "cfc618e5-9087-4bba-ad89-d7a2e0dc106f",
+              "leftValue": "={{ $('Classify Error').first().json.severity }}",
+              "rightValue": "critical",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        -16,
+        -704
+      ],
+      "id": "820a5a41-37b5-44af-87cc-f49b982ba4d1",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "alerts@example.com",
+        "subject": "={{ 'CRITICAL: ' + $('Classify Error').first().json.workflow + ' - ' + $('Classify Error').first().json.type }}",
+        "message": "={{ $('Classify Error').first().json.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        288,
+        -752
+      ],
+      "id": "f9070b6e-bf6a-4d19-ba35-d26211e8f3a0",
+      "name": "Email critical erorr",
+      "webhookId": "73249318-38b6-4e26-a1a2-22c3157be589",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -912,
+        -480
+      ],
+      "id": "9961628d-6783-472d-b304-d0922b4c5e27",
+      "name": "Every 15 Minutes"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Reservations",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "reserved"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -688,
+        -480
+      ],
+      "id": "0f8afc84-4254-4d20-9b31-556ff0adb02d",
+      "name": "Read Reservations",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Catalog",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -464,
+        -480
+      ],
+      "id": "5e11c6b9-7314-49cd-a8e9-a308b904be06",
+      "name": "Read Catalog",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Expired Lines =====\nconst now = $now.setZone('Africa/Cairo');\nconst rows = $('Read Reservations').all().map(i => i.json);\n\nconst expired = rows.filter(r =>\n  r.status === 'reserved' && r.sku && r.expires_at &&\n  DateTime.fromFormat(String(r.expires_at), 'yyyy-MM-dd H:mm', { zone: 'Africa/Cairo' }) < now\n);\n\nconst seen = {};\nreturn expired.map(r => {\n  const group = String(r.res_id).replace(/-\\d+$/, '');\n  const first = !seen[group];\n  seen[group] = true;\n  return { json: {\n    res_id: r.res_id, group: group, sku: r.sku, name: r.name,\n    qty: Number(r.qty), customer_id: r.customer_id, status: 'expired', first: first\n  } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -480
+      ],
+      "id": "6b1bc1bc-5504-4b1d-8daa-2f680b3f5a6e",
+      "name": "Expired Lines"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Reservations",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "res_id": "={{ $json.res_id }}",
+            "status": "={{ $json.status }}"
+          },
+          "matchingColumns": [
+            "res_id"
+          ],
+          "schema": [
+            {
+              "id": "res_id",
+              "displayName": "res_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "wa_phone_id",
+              "displayName": "wa_phone_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "sku",
+              "displayName": "sku",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "qty",
+              "displayName": "qty",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "total_egp",
+              "displayName": "total_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "expires_at",
+              "displayName": "expires_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "pharmacist",
+              "displayName": "pharmacist",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "note",
+              "displayName": "note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -16,
+        -480
+      ],
+      "id": "d6a63b2c-4ca9-485e-a176-572e75d4bda3",
+      "name": "Mark Expire",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "YOUR_WHATSAPP_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $json.customer_id }}",
+        "textBody": "={{ '⏰ *انتهى وقت حجزك*\\n\\n🧾 رقم الحجز: ' + $json.group + '\\n\\nالأدوية رجعت للمخزون. لو لسه محتاجها ابعتلنا طلب جديد وإحنا في خدمتك 🌿' }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        -480
+      ],
+      "id": "2b2e06e7-c4c8-45b6-b4c4-7797979416f2",
+      "name": "Send message",
+      "webhookId": "5bfb5f72-86a8-452d-8565-cd1facf6fbbd",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "YOUR_WHATSAPP_CREDENTIAL_ID",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Restock Totals =====\nconst now = $now.setZone('Africa/Cairo');\nconst rows = $('Read Reservations').all().map(i => i.json);\n\n// نفس شرط Expired Lines: reserved وعدّى ميعاد الانتهاء\nconst expired = rows.filter(r =>\n  r.status === 'reserved' && r.sku && r.expires_at &&\n  DateTime.fromFormat(String(r.expires_at), 'yyyy-MM-dd H:mm', { zone: 'Africa/Cairo' }) < now\n);\n\nconst cat = {};\nfor (const i of $('Read Catalog').all()) if (i.json.sku) cat[i.json.sku] = Number(i.json.stock) || 0;\n\nconst add = {};\nfor (const r of expired) add[r.sku] = (add[r.sku] || 0) + Number(r.qty);\n\nreturn Object.entries(add).map(([sku, q]) => ({ json: { sku: sku, stock: (cat[sku] || 0) + q } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -352
+      ],
+      "id": "624d83ef-675d-4a5e-bbe1-f92d8fde1d72",
+      "name": "Restock Totals"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Catalog",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sku": "={{ $json.sku }}",
+            "stock": "={{ $json.stock }}"
+          },
+          "matchingColumns": [
+            "sku"
+          ],
+          "schema": [
+            {
+              "id": "sku",
+              "displayName": "sku",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "active_ingredient",
+              "displayName": "active_ingredient",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "strength",
+              "displayName": "strength",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "form",
+              "displayName": "form",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "price_egp",
+              "displayName": "price_egp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "stock",
+              "displayName": "stock",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reorder_level",
+              "displayName": "reorder_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "controlled",
+              "displayName": "controlled",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -16,
+        -352
+      ],
+      "id": "f071bc8b-d524-474e-874d-ddbf267b64ac",
+      "name": "Return Stock",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 22 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -624,
+        -128
+      ],
+      "id": "fd493e59-07a6-4a9a-a8ee-de540ffce3bc",
+      "name": "Every Day 22:00"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Catalog",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -432,
+        -128
+      ],
+      "id": "79092380-7557-40e5-8878-0edd4c43b391",
+      "name": "Read Stock",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Find Low Stock: الأصناف اللي مخزونها أقل من 10 =====\nconst LIMIT = 10;\nconst R = '\\u200F';\nconst esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst low = $input.all().map(i => i.json)\n  .filter(r => r.sku && Number(r.stock) < LIMIT)\n  .map(r => ({ sku: r.sku, name: r.name, strength: r.strength, stock: Number(r.stock) }))\n  .sort((a, b) => a.stock - b.stock);\n\n// مفيش نواقص: المسار يقف ومفيش رسالة فاضية\nif (!low.length) return [];\n\nconst list = low.map((i, k) =>\n  R + (i.stock === 0 ? '🔴' : '🟡') + ' ' + (k + 1) + '. <b>' + esc(i.name) + '</b> ' + esc(i.strength) + ' — المتبقي: ' + i.stock\n).join('\\n');\n\nconst text = R + '📉 <b>أصناف مخزونها أقل من ' + LIMIT + '</b>\\n'\n  + R + '🕒 ' + $now.setZone('Africa/Cairo').toFormat('yyyy-MM-dd HH:mm') + '\\n\\n'\n  + list + '\\n\\n'\n  + R + '👨‍⚕️ برجاء عمل Restock';\n\nreturn [{ json: { count: low.length, items: low, text: text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        -128
+      ],
+      "id": "2af00a00-7185-404b-ada6-2f08cd430b23",
+      "name": "Find Low Stock"
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        -128
+      ],
+      "id": "38bdd7d2-41c7-444a-b346-a36ea0c68e87",
+      "name": "Post Reorder List",
+      "webhookId": "d137998a-0123-474d-b111-d15392acce25",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Erorr classifcation",
+        "height": 224,
+        "width": 1440
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -992,
+        -784
+      ],
+      "typeVersion": 1,
+      "id": "b18843c5-bb64-4b20-a650-7f73f2dac317",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "Reservation check time expire if time pass restock then send message to client tell him if he want to reservation",
+        "height": 336,
+        "width": 1440,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -992,
+        -544
+      ],
+      "typeVersion": 1,
+      "id": "13569842-7cae-404b-8cc5-7b943c4658b2",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "Check items less 10 and send message to pharmastic to restock",
+        "height": 208,
+        "width": 1440,
+        "color": "#D4E30D"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -992,
+        -176
+      ],
+      "typeVersion": 1,
+      "id": "1068098c-69d2-4cbc-8bab-e8330407f9f3",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Notify Groups: رسالة واحدة لكل طلب منتهي =====\nreturn $('Expired Lines').all().map(i => i.json)\n  .filter(r => r.first)\n  .map(r => ({ json: { customer_id: String(r.customer_id), group: r.group } }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -480
+      ],
+      "id": "1917340b-b71a-43d6-ae44-850d4ceb98ca",
+      "name": "Notify Groups"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Classify Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Error": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error": {
+      "main": [
+        [
+          {
+            "node": "Alret Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alret Team": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Email critical erorr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Read Reservations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Reservations": {
+      "main": [
+        [
+          {
+            "node": "Read Catalog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Catalog": {
+      "main": [
+        [
+          {
+            "node": "Expired Lines",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Restock Totals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expired Lines": {
+      "main": [
+        [
+          {
+            "node": "Mark Expire",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Expire": {
+      "main": [
+        [
+          {
+            "node": "Notify Groups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restock Totals": {
+      "main": [
+        [
+          {
+            "node": "Return Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every Day 22:00": {
+      "main": [
+        [
+          {
+            "node": "Read Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Stock": {
+      "main": [
+        [
+          {
+            "node": "Find Low Stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Low Stock": {
+      "main": [
+        [
+          {
+            "node": "Post Reorder List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Groups": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Africa/Cairo",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "e81d88d9-f8ef-452f-813c-449167edc4f8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_N8N_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "id": "YOUR_ERROR_WORKFLOW_ID",
+  "tags": []
+}
